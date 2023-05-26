@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strconv"
+
 	"gocsv/csv"
 )
 
@@ -9,8 +11,11 @@ type Person struct {
 	Age  int    `csv:"age"`
 }
 
-func (p Person) MarshalCSV() ([]byte, error) {
-	return []byte(p.Name + "," + string(p.Age)), nil
+func (p Person) MarshalCSV() (map[string][]byte, error) {
+	return map[string][]byte{
+		"name": []byte(p.Name),
+		"age":  []byte(strconv.Itoa(p.Age)),
+	}, nil
 }
 
 func (p Person) UnmarshalCSV([]byte) error {
@@ -27,4 +32,16 @@ func main() {
 	}
 
 	println(string(b))
+
+	data := []byte(`Age, Name
+	20, John
+	30, Jane`)
+	var unmarshalled []Person
+
+	err = csv.UnmarshalCSV(data, &unmarshalled)
+	if err != nil {
+		println(err.Error())
+	} else {
+		println(unmarshalled)
+	}
 }
