@@ -1,14 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 
 	"gocsv/csv"
 )
 
 type Person struct {
-	Name string `csv:"name"`
-	Age  int    `csv:"age"`
+	Name string `csv:"Pepe"`
+	Age  int    `csv:"-"`
 }
 
 func (p Person) MarshalCSV() (map[string][]byte, error) {
@@ -33,15 +34,15 @@ func main() {
 
 	println(string(b))
 
-	data := []byte(`Age, Name
-	20, John
-	30, Jane`)
+	data := []byte(`Pepe, Name
+	hola,John
+	cantu no sabe rust,Jane`)
 	var unmarshalled []Person
 
 	err = csv.UnmarshalCSV(data, &unmarshalled)
 	if err != nil {
-		println(err.Error())
+		fmt.Println(err.Error())
 	} else {
-		println(unmarshalled)
+		fmt.Println(unmarshalled)
 	}
 }
