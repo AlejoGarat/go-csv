@@ -16,7 +16,7 @@ type UnmarshalCVer interface {
 	UnmarshalCSV([]byte) error
 }
 
-func MarshalCSV(arr []any) ([]byte, error) {
+func MarshalCSV[T any](arr []T) ([]byte, error) {
 	titles := getTitlesWithReflection(arr)
 	wr := bytes.Buffer{}
 	if len(titles) != 0 {
@@ -28,7 +28,7 @@ func MarshalCSV(arr []any) ([]byte, error) {
 	return wr.Bytes(), nil
 }
 
-func getRowsWithReflection(p []any, wr *bytes.Buffer, titles []string) {
+func getRowsWithReflection[T any](p []T, wr *bytes.Buffer, titles []string) {
 	v := reflect.TypeOf(p[0])
 	if v.Kind() != reflect.Struct {
 		panic("struct is required")
@@ -44,14 +44,8 @@ func getRowsWithReflection(p []any, wr *bytes.Buffer, titles []string) {
 					if i > 0 {
 						wr.WriteString(",")
 					}
-					switch f := val.FieldByName(field.Name); f.Kind() {
-					case reflect.String:
-						wr.WriteString(f.String())
-					case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-						wr.WriteString(strconv.FormatInt(f.Int(), 10))
-					default:
-						fmt.Printf("unhandled kind %s", v.Kind())
-					}
+					f := val.FieldByName(field.Name)
+					writeValue(f, v, field, wr)
 				}
 			}
 
@@ -60,7 +54,7 @@ func getRowsWithReflection(p []any, wr *bytes.Buffer, titles []string) {
 	}
 }
 
-func getTitlesWithReflection(p []any) []string {
+func getTitlesWithReflection[T any](p []T) []string {
 	var titles []string
 
 	v := reflect.TypeOf(p[0])
@@ -80,6 +74,19 @@ func getTitlesWithReflection(p []any) []string {
 	}
 
 	return titles
+}
+
+func writeValue(f reflect.Value, v reflect.Type, field reflect.StructField, wr *bytes.Buffer) {
+	switch f.Kind() {
+	case reflect.String:
+		wr.WriteString(f.String())
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		wr.WriteString(strconv.FormatInt(f.Int(), 10))
+	case reflect.Pointer:
+		writeValue(f.Elem(), v, field, wr)
+	default:
+		fmt.Printf("unhandled kind %s", v.Kind())
+	}
 }
 
 func UnmarshalCSV[T any](csv []byte, target *[]T) error {

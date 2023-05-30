@@ -121,6 +121,16 @@ func TestMarshalWithMixedOrder(t *testing.T) {
 	assert.Equal(t, "Name,Age\nJohn,20\nJane,30\n", string(b))
 }
 
+func TestMarshalStructWithPointer(t *testing.T) {
+	type typ struct{ Name *string }
+	stringPointer := func(s string) *string { return &s }
+	arr := []typ{{Name: stringPointer("John")}}
+
+	b, err := csv.MarshalCSV(arr)
+	assert.NoError(t, err)
+	assert.Equal(t, "Name\nJohn\n", string(b))
+}
+
 func TestUnmarshalWithTags(t *testing.T) {
 	data := []byte(`name, age
 					John, 20
