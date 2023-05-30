@@ -33,7 +33,6 @@ func getRowsWithReflection(p []any, wr *bytes.Buffer, titles []string) {
 	if v.Kind() != reflect.Struct {
 		panic("struct is required")
 	} else {
-
 		for _, s := range p {
 			var fields []reflect.StructField
 
@@ -94,75 +93,92 @@ func UnmarshalCSV[T any](csv []byte, target *[]T) error {
 
 	for i, line := range bytes.Split(csv, []byte("\n")) {
 		if i == 0 {
-			titles = strings.Split(string(line), ",")
-			for i := range titles {
-				titles[i] = strings.TrimSpace(titles[i])
-			}
+			titles = getTitles(line)
 			var t T
 			typ := reflect.TypeOf(t)
-			for i := 0; i < typ.NumField(); i++ {
-				line := typ.Field(i)
-				fields = append(fields, line)
-			}
-		} else {
-			splitted := bytes.Split(line, []byte(","))
-			var t T
-			for j, s := range splitted {
-				val := reflect.ValueOf(&t)
-				index := -1
-
-				for i, field := range fields {
-					if field.Tag.Get("csv") == titles[j] {
-						index = i
-						break
-					}
-				}
-
-				if index == -1 {
-					for i, field := range fields {
-						if field.Name == titles[j] {
-							if _, ok := field.Tag.Lookup("csv"); !ok {
-								index = i
-								break
-							}
-						}
-					}
-				}
-				if index == -1 {
-					continue
-				}
-
-				fieldValue := val.Elem().Field(index)
-
-				k := fieldValue.Kind()
-
-				switch k {
-				case reflect.String:
-					val.Elem().Field(index).SetString(strings.TrimSpace(string(s)))
-				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-					is, err := strconv.ParseUint(strings.TrimSpace(string(s)), 10, 64)
-					if err != nil {
-						panic(err.Error())
-					}
-
-					val.Elem().Field(index).SetInt(int64(is))
-
-				default:
-					fmt.Printf("unhandled kind %s", val)
-				}
-			}
-			*target = append(*target, t)
+			fields = getFields(typ)
+			continue
 		}
+		splitted := bytes.Split(line, []byte(","))
+		if len(splitted) == 0 || len(splitted) == 1 && len(bytes.TrimSpace(splitted[0])) == 0 {
+			continue
+		}
+		var t T
+		for j, s := range splitted {
+			val := reflect.ValueOf(&t)
+
+			index := updateIndex(fields, titles, j)
+			if index == -1 {
+				continue
+			}
+
+			setField(index, val, s)
+
+		}
+		*target = append(*target, t)
 	}
 	return nil
 }
 
-/*
-if m, ok := v.(MarshalCSVer); ok {
-			bs, err := m.MarshalCSV()
-			if err != nil {
-				return nil, err
+func getTitles(line []byte) []string {
+	titles := strings.Split(string(line), ",")
+	for i := range titles {
+		titles[i] = strings.TrimSpace(titles[i])
+	}
+	return titles
+}
+
+func getFields(typ reflect.Type) []reflect.StructField {
+	var fields []reflect.StructField
+
+	for i := 0; i < typ.NumField(); i++ {
+		line := typ.Field(i)
+		fields = append(fields, line)
+	}
+
+	return fields
+}
+
+func updateIndex(fields []reflect.StructField, titles []string, j int) int {
+	index := -1
+
+	for i, field := range fields {
+		if field.Tag.Get("csv") == titles[j] {
+			index = i
+			break
+		}
+	}
+
+	if index == -1 {
+		for i, field := range fields {
+			if field.Name == titles[j] {
+				if _, ok := field.Tag.Lookup("csv"); !ok {
+					index = i
+					break
+				}
 			}
-			wr.Write(bs)
-			wr.WriteString("\n")
-*/
+		}
+	}
+
+	return index
+}
+
+func setField(index int, val reflect.Value, s []byte) {
+	fieldValue := val.Elem().Field(index)
+	k := fieldValue.Kind()
+
+	switch k {
+	case reflect.String:
+		val.Elem().Field(index).SetString(strings.TrimSpace(string(s)))
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		is, err := strconv.ParseUint(strings.TrimSpace(string(s)), 10, 64)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		val.Elem().Field(index).SetInt(int64(is))
+
+	default:
+		fmt.Printf("unhandled kind %s", val)
+	}
+}

@@ -7,39 +7,50 @@ import (
 	"gocsv/csv"
 )
 
-type Person struct {
-	Name string `csv:"name"`
-	Age  int    `csv:"age"`
+type SomeStruct struct {
+	A string `csv:"a"`
+	B int    `csv:"-"`
+	C string `csv:"c"`
+	D int    `csv:"-"`
+	E string `csv:"-"`
+	F int    `csv:"f"`
+	G string `csv:"-"`
+	H int    `csv:"h"`
+	I string `csv:"i"`
+	J int    `csv:"-"`
 }
 
-func (p Person) MarshalCSV() (map[string][]byte, error) {
+func (s SomeStruct) MarshalCSV() (map[string][]byte, error) {
 	return map[string][]byte{
-		"name": []byte(p.Name),
-		"age":  []byte(strconv.Itoa(p.Age)),
+		"a": []byte(s.A),
+		"c": []byte(s.C),
+		"f": []byte(strconv.Itoa(s.F)),
+		"h": []byte(strconv.Itoa(s.H)),
+		"i": []byte(s.I),
 	}, nil
 }
 
-func (p Person) UnmarshalCSV([]byte) error {
+func (s SomeStruct) UnmarshalCSV([]byte) error {
 	return nil
 }
 
 func main() {
-	p1 := Person{"John", 20}
-	p2 := Person{"Jane", 30}
-
-	b, err := csv.MarshalCSV([]any{p1, p2})
-	if err != nil {
-		panic(err)
+	var s []any
+	for i := 0; i < 10; i++ {
+		s = append(s, SomeStruct{
+			"John", 10, "Jane", 30, "Jerry", 50, "Tom", 70, "Jessie", 90,
+		})
 	}
 
-	println(string(b))
+	b, err := csv.MarshalCSV(s)
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Println(string(b))
 
-	data := []byte(`Pepe, Name
-	hola,John
-	cantu no sabe rust,Jane`)
-	var unmarshalled []Person
+	var unmarshalled []SomeStruct
 
-	err = csv.UnmarshalCSV(data, &unmarshalled)
+	err = csv.UnmarshalCSV(b, &unmarshalled)
 	if err != nil {
 		fmt.Println(err.Error())
 	} else {
