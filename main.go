@@ -8,8 +8,8 @@ import (
 )
 
 type Person struct {
-	Name string `csv:"Pepe"`
-	Age  int    `csv:"-"`
+	Name string `csv:"name"`
+	Age  int    `csv:"age"`
 }
 
 func (p Person) MarshalCSV() (map[string][]byte, error) {

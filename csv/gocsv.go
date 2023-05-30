@@ -22,43 +22,53 @@ func MarshalCSV(arr []any) ([]byte, error) {
 	if len(titles) != 0 {
 		wr.WriteString(strings.Join(titles, ","))
 		wr.WriteString("\n")
-	}
-	for _, v := range arr {
-		getRowsWithReflection(v, &wr)
+		getRowsWithReflection(arr, &wr, titles)
 	}
 
 	return wr.Bytes(), nil
 }
 
-func getRowsWithReflection(p any, wr *bytes.Buffer) {
-	v := reflect.TypeOf(p)
+func getRowsWithReflection(p []any, wr *bytes.Buffer, titles []string) {
+	v := reflect.TypeOf(p[0])
 	if v.Kind() != reflect.Struct {
 		panic("struct is required")
 	} else {
-		s := reflect.ValueOf(p)
-		for i := 0; i < v.NumField(); i++ {
-			line := v.Field(i)
-			tag, ok := line.Tag.Lookup("csv")
-			if ok && tag != "-" {
-				switch f := s.FieldByName(line.Name); f.Kind() {
-				case reflect.String:
-					wr.WriteString(f.String())
-				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-					wr.WriteString(strconv.FormatInt(f.Int(), 10))
-				default:
-					fmt.Printf("unhandled kind %s", v.Kind())
-				}
-				if i < v.NumField()-1 {
-					wr.WriteString(",")
+
+		for _, s := range p {
+			var fields []reflect.StructField
+
+			for i := 0; i < v.NumField(); i++ {
+				line := v.Field(i)
+				fields = append(fields, line)
+			}
+
+			v := reflect.TypeOf(s)
+			val := reflect.ValueOf(s)
+
+			for i, field := range fields {
+				if field.Tag.Get("csv") != "-" {
+					if i > 0 {
+						wr.WriteString(",")
+					}
+					switch f := val.FieldByName(field.Name); f.Kind() {
+					case reflect.String:
+						wr.WriteString(f.String())
+					case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+						wr.WriteString(strconv.FormatInt(f.Int(), 10))
+					default:
+						fmt.Printf("unhandled kind %s", v.Kind())
+					}
 				}
 			}
+
+			wr.WriteString("\n")
 		}
-		wr.WriteString("\n")
 	}
 }
 
 func getTitlesWithReflection(p []any) []string {
 	var titles []string
+
 	v := reflect.TypeOf(p[0])
 	if v.Kind() != reflect.Struct {
 		panic("struct is required")
@@ -70,7 +80,7 @@ func getTitlesWithReflection(p []any) []string {
 		tag, ok := line.Tag.Lookup("csv")
 		if ok && tag != "-" {
 			titles = append(titles, tag)
-		} else if tag != "-" {
+		} else if !ok {
 			titles = append(titles, line.Name)
 		}
 	}
