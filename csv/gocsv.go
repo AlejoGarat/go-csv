@@ -34,12 +34,7 @@ func getRowsWithReflection(p []any, wr *bytes.Buffer, titles []string) {
 		panic("struct is required")
 	} else {
 		for _, s := range p {
-			var fields []reflect.StructField
-
-			for i := 0; i < v.NumField(); i++ {
-				line := v.Field(i)
-				fields = append(fields, line)
-			}
+			fields := getFields(v)
 
 			v := reflect.TypeOf(s)
 			val := reflect.ValueOf(s)
